@@ -14,6 +14,14 @@ from .helpers import (
     validate_config
 )
 
+from .mesh import (
+    create_mesh_for_device,
+    create_partitioned_linear,
+    get_device_info,
+    print_device_info,
+    setup_distributed_training
+)
+
 __all__ = [
     "save_model_checkpoint",
     "load_model_checkpoint",
@@ -25,5 +33,10 @@ __all__ = [
     "create_experiment_name",
     "ProgressTracker",
     "log_experiment_info",
-    "validate_config"
+    "validate_config",
+    "create_mesh_for_device",
+    "create_partitioned_linear",
+    "get_device_info",
+    "print_device_info",
+    "setup_distributed_training"
 ]
