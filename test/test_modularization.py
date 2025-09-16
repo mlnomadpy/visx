@@ -195,8 +195,8 @@ def main():
     print("🚀 VISX Modularization Test Suite")
     print("=" * 80)
     
-    # Change to the script directory
-    os.chdir(Path(__file__).parent)
+    # Change to the repository root directory
+    os.chdir(Path(__file__).parent.parent)
     
     tests = [
         ("Module Structure", test_module_structure),

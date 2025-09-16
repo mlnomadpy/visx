@@ -60,6 +60,10 @@ from flax import nnx  # The Flax NNX API.
 from functools import partial
 import optax
 
+# Import modular data utilities
+from visx.data.configs import DATASET_CONFIGS, DEFAULT_DATASET
+from visx.data.loaders import create_global_datasets
+
 Array = jax.Array
 
 # Default initializers
@@ -550,49 +554,11 @@ def eval_step(model, metrics: nnx.MultiMetric, batch):
 tf.random.set_seed(0)
 
 # ===== DATASET CONFIGURATIONS =====
-DATASET_CONFIGS = {
-    'cifar10': {
-        'num_classes': 10, 'input_channels': 3,
-        'train_split': 'train', 'test_split': 'test',
-        'image_key': 'image', 'label_key': 'label',
-        'num_epochs': 5, 'eval_every': 200, 'batch_size': 128
-    },
-    'cifar100': {
-        'num_classes': 100, 'input_channels': 3,
-        'train_split': 'train', 'test_split': 'test',
-        'image_key': 'image', 'label_key': 'label',
-        'num_epochs': 5, 'eval_every': 200, 'batch_size': 128
-    },
-    'stl10': {
-        'num_classes': 10, 'input_channels': 3,
-        'train_split': 'train', 'test_split': 'test',
-        'image_key': 'image', 'label_key': 'label',
-        'num_epochs': 5, 'eval_every': 200, 'batch_size': 128
-    },
-    'eurosat/rgb': {
-        'num_classes': 10, 'input_channels': 3,
-        'train_split': 'train[:80%]', 'test_split': 'train[80%:]',
-        'image_key': 'image', 'label_key': 'label', # EuroSAT label key is 'label' in TFDS
-        'num_epochs': 5, 'eval_every': 100, 'batch_size': 128
-    },
-    'eurosat/all': {
-        'num_classes': 10, 'input_channels': 13,
-        'train_split': 'train[:80%]', 'test_split': 'train[80%:]',
-        'image_key': 'image', 'label_key': 'label',
-        'num_epochs': 5, 'eval_every': 100, 'batch_size': 16 # Smaller batch for more channels
-    },
-    # Example for a dataset that might need specific image resizing if models were not robust
-    # 'some_other_dataset': {
-    #     'num_classes': X, 'input_channels': Y, 
-    #     'train_split': 'train', 'test_split': 'validation',
-    #     'image_key': 'image_data', 'label_key': 'class_id',
-    #     'target_image_size': [H, W] # Optional: for explicit resizing
-    # },
-}
+# Dataset configurations moved to visx.data.configs
 
 # Original global dataset setup (will be superseded by _train_model_loop for actual training runs)
 # These might still be used by some top-level calls if not careful, or for initial exploration.
-_DEFAULT_DATASET_FOR_GLOBALS = 'cifar10'
+_DEFAULT_DATASET_FOR_GLOBALS = DEFAULT_DATASET
 
 # Get default training parameters from the default dataset's config or set fallbacks
 _default_config_for_globals = DATASET_CONFIGS.get(_DEFAULT_DATASET_FOR_GLOBALS, {})
@@ -600,21 +566,18 @@ _global_num_epochs = _default_config_for_globals.get('num_epochs', 10) # Default
 _global_eval_every = _default_config_for_globals.get('eval_every', 200)
 _global_batch_size = _default_config_for_globals.get('batch_size', 64)
 
-
 _global_ds_builder = tfds.builder(_DEFAULT_DATASET_FOR_GLOBALS)
 _global_ds_info = _global_ds_builder.info
 
-train_ds_global_tf: tf.data.Dataset = tfds.load(_DEFAULT_DATASET_FOR_GLOBALS, split='train')
-test_ds_global_tf: tf.data.Dataset = tfds.load(_DEFAULT_DATASET_FOR_GLOBALS, split='test')
+# Create global datasets using the new modular data loaders
+train_ds_global_tf, test_ds_global_tf = create_global_datasets(_DEFAULT_DATASET_FOR_GLOBALS)
 
+# Legacy preprocessing function for backward compatibility
 def _global_preprocess(sample):
     return {
         'image': tf.cast(sample[DATASET_CONFIGS[_DEFAULT_DATASET_FOR_GLOBALS]['image_key']], tf.float32) / 255,
         'label': sample[DATASET_CONFIGS[_DEFAULT_DATASET_FOR_GLOBALS]['label_key']],
     }
-
-train_ds_global_tf = train_ds_global_tf.map(_global_preprocess)
-test_ds_global_tf = test_ds_global_tf.map(_global_preprocess)
 
 # Original global TF dataset iterators (used for some analysis functions if they don't reload)
 # It's better if analysis functions requiring data get it passed or reload it with correct dataset_name
@@ -1764,6 +1727,3 @@ print("   - visualize_kernels(yat_model, linear_model, layer_name='conv1', num_k
 print("   - activation_map_visualization(yat_model, linear_model, test_ds_iter, layer_name='conv1', num_maps_to_show=16)")
 print("   - saliency_map_analysis(yat_model, linear_model, test_ds_iter, class_names=class_names_comp)")
 print("="*80)
-
-
-results_stl10 = run_complete_comparison(dataset_name='stl10')
