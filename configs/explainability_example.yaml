@@ -1,0 +1,44 @@
+# VISX Configuration for Explainability Analysis
+mode: explainability
+output_dir: outputs/explainability_analysis
+save_checkpoints: true
+verbose: true
+
+dataset:
+  name: cifar10
+  num_classes: 10
+  input_channels: 3
+  train_split: train
+  test_split: test
+  image_key: image
+  label_key: label
+  num_epochs: 3  # Fewer epochs for quick training before analysis
+  eval_every: 100
+  batch_size: 128
+
+model:
+  name: yat_cnn
+  type: yat
+  num_classes: 10
+  input_channels: 3
+  architecture_params: {}
+
+training:
+  learning_rate: 0.003
+  momentum: 0.9
+  optimizer: adamw
+  rng_seed: 42
+  precision: float32
+
+pretraining:
+  method: supervised
+  temperature: 0.1
+  projection_dim: 128
+  momentum_tau: 0.996
+  augmentation_strength: 0.5
+
+explainability:
+  enabled: true
+  methods: [saliency, kernels, activation]
+  layer_names: [conv1, conv2]
+  num_samples: 20

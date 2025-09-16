@@ -1,0 +1,44 @@
+# VISX Configuration for BYOL Pretraining
+mode: pretraining
+output_dir: outputs/byol_pretraining
+save_checkpoints: true
+verbose: true
+
+dataset:
+  name: cifar10
+  num_classes: 10
+  input_channels: 3
+  train_split: train
+  test_split: test
+  image_key: image
+  label_key: label
+  num_epochs: 100  # Longer for pretraining
+  eval_every: 500
+  batch_size: 256  # Larger batch for contrastive learning
+
+model:
+  name: yat_cnn
+  type: yat
+  num_classes: 10
+  input_channels: 3
+  architecture_params: {}
+
+training:
+  learning_rate: 0.001  # Lower LR for pretraining
+  momentum: 0.9
+  optimizer: adamw
+  rng_seed: 42
+  precision: float32
+
+pretraining:
+  method: byol
+  temperature: 0.1
+  projection_dim: 256
+  momentum_tau: 0.996
+  augmentation_strength: 0.8
+
+explainability:
+  enabled: false
+  methods: [saliency, kernels]
+  layer_names: [conv1, conv2]
+  num_samples: 16

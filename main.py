@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as tp
 
 import jax
@@ -23,8 +25,6 @@ from flax.typing import (
   LaxPadding,
   PromoteDtypeFn,
 )
-
-from __future__ import annotations
 
 import typing as tp
 
