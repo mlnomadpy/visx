@@ -75,22 +75,40 @@ def test_streaming_datasets():
     try:
         from visx.data.streaming import (
             is_huggingface_available,
-            list_hf_vision_datasets
+            list_hf_vision_datasets,
+            get_dataset_categories,
+            list_hf_vision_datasets_legacy
         )
         
         # Test HuggingFace availability check
         hf_available = is_huggingface_available()
         print(f"✅ HuggingFace datasets available: {hf_available}")
         
-        # Test dataset listing
-        hf_datasets = list_hf_vision_datasets()
-        print(f"✅ Found {len(hf_datasets)} HuggingFace vision datasets")
+        # Test new categorized dataset listing
+        datasets_by_category = list_hf_vision_datasets()
+        categories = get_dataset_categories()
+        print(f"✅ Found datasets in {len(categories)} categories: {categories}")
+        
+        total_datasets = sum(len(ds_list) for ds_list in datasets_by_category.values())
+        print(f"✅ Total datasets available: {total_datasets}")
+        
+        # Test legacy compatibility
+        legacy_datasets = list_hf_vision_datasets_legacy()
+        print(f"✅ Legacy compatibility: {len(legacy_datasets)} datasets")
         
         if hf_available:
             try:
                 from visx.data.streaming import get_hf_dataset_info
                 info = get_hf_dataset_info('cifar10')
-                print(f"✅ Retrieved info for CIFAR-10: {info}")
+                if 'error' not in info:
+                    print(f"✅ Retrieved enhanced info for CIFAR-10")
+                    print(f"   Available: {info.get('available', 'N/A')}")
+                    if 'recommendations' in info:
+                        recs = info['recommendations']
+                        print(f"   Recommended image size: {recs.get('resize_suggestion', 'N/A')}")
+                        print(f"   Recommended batch size: {recs.get('batch_size_suggestion', 'N/A')}")
+                else:
+                    print(f"⚠️  Could not test dataset info retrieval: {info['error']}")
             except Exception as e:
                 print(f"⚠️  Could not test dataset info retrieval: {e}")
         
