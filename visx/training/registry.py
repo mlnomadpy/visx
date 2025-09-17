@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, Type, Callable, Any
 from flax import nnx
-from ..models import YatCNN, LinearCNN
+from ..models import YatCNN, LinearCNN, ResNet18LN, DenseNet121, SimoModel
 from ..config import Config
 
 
@@ -70,8 +70,48 @@ def build_linear_cnn(config: Config, rngs: nnx.Rngs) -> LinearCNN:
     )
 
 
+def build_resnet18_ln(config: Config, rngs: nnx.Rngs) -> ResNet18LN:
+    """Build ResNet-18 with Layer Normalization."""
+    return ResNet18LN(rngs=rngs)
+
+
+def build_densenet121(config: Config, rngs: nnx.Rngs) -> DenseNet121:
+    """Build DenseNet-121."""
+    return DenseNet121(rngs=rngs)
+
+
+def build_simo_resnet18_ln(config: Config, rngs: nnx.Rngs) -> SimoModel:
+    """Build SIMO model with ResNet-18 backbone."""
+    backbone = ResNet18LN(rngs=rngs)
+    embedding_dim = getattr(config.pretraining, 'embedding_dim', 128)
+    return SimoModel(
+        backbone=backbone,
+        feature_dim=backbone.feature_dim,
+        embedding_dim=embedding_dim,
+        rngs=rngs
+    )
+
+
+def build_simo_densenet121(config: Config, rngs: nnx.Rngs) -> SimoModel:
+    """Build SIMO model with DenseNet-121 backbone."""
+    backbone = DenseNet121(rngs=rngs)
+    embedding_dim = getattr(config.pretraining, 'embedding_dim', 128)
+    return SimoModel(
+        backbone=backbone,
+        feature_dim=backbone.feature_dim,
+        embedding_dim=embedding_dim,
+        rngs=rngs
+    )
+
+
 # Register default models
 ModelRegistry.register("yat_cnn", YatCNN, build_yat_cnn)
 ModelRegistry.register("linear_cnn", LinearCNN, build_linear_cnn)
 ModelRegistry.register("yat", YatCNN, build_yat_cnn)  # Alias
 ModelRegistry.register("linear", LinearCNN, build_linear_cnn)  # Alias
+
+# Register SIMO2 models
+ModelRegistry.register("resnet18_ln", ResNet18LN, build_resnet18_ln)
+ModelRegistry.register("densenet121", DenseNet121, build_densenet121)
+ModelRegistry.register("simo_resnet18_ln", SimoModel, build_simo_resnet18_ln)
+ModelRegistry.register("simo_densenet121", SimoModel, build_simo_densenet121)
