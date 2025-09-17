@@ -410,7 +410,7 @@ class SIMO2Pretraining(PretrainingMethod):
         
         # Create optimizer
         learning_rate = getattr(config.pretraining, 'learning_rate', 3e-4)
-        optimizer = nnx.Optimizer(model, optax.adam(learning_rate))
+        optimizer = nnx.Optimizer(model, optax.adam(learning_rate), wrt=nnx.All(nnx.Param))
         
         # Create training step
         @nnx.jit
