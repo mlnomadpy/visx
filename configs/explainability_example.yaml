@@ -42,3 +42,8 @@ explainability:
   methods: [saliency, kernels, activation]
   layer_names: [conv1, conv2]
   num_samples: 20
+
+mesh:
+  enabled: true
+  auto_detect: true  # Use automatic detection for explainability
+  # Mesh configuration usually not critical for explainability analysis

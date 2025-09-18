@@ -7,7 +7,67 @@ import jax.numpy as jnp
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 from jax.experimental import mesh_utils
 from flax import nnx
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..config.config import MeshConfig
+
+
+def create_mesh_from_config(mesh_config: "MeshConfig") -> Optional[Mesh]:
+    """Create JAX mesh based on configuration.
+    
+    Args:
+        mesh_config: Mesh configuration object.
+        
+    Returns:
+        Optional[Mesh]: JAX mesh or None if disabled/single device.
+    """
+    if not mesh_config.enabled:
+        return None
+        
+    num_devices = len(jax.devices())
+    if num_devices <= 1:
+        return None
+    
+    # If auto_detect is enabled, use backend-specific defaults
+    if mesh_config.auto_detect:
+        return create_mesh_for_device()
+    
+    # Use explicit configuration
+    backend = jax.default_backend()
+    
+    # Get backend-specific settings
+    if backend == 'tpu' and mesh_config.tpu_mesh_shape and mesh_config.tpu_axis_names:
+        mesh_shape = tuple(mesh_config.tpu_mesh_shape)
+        axis_names = tuple(mesh_config.tpu_axis_names)
+    elif backend != 'tpu' and mesh_config.gpu_mesh_shape and mesh_config.gpu_axis_names:
+        mesh_shape = tuple(mesh_config.gpu_mesh_shape)
+        axis_names = tuple(mesh_config.gpu_axis_names)
+    elif mesh_config.shape and mesh_config.axis_names:
+        # Use general shape and axis names
+        mesh_shape = tuple(mesh_config.shape)
+        axis_names = tuple(mesh_config.axis_names)
+    else:
+        # Fallback to auto-detection
+        return create_mesh_for_device()
+    
+    # Validate mesh shape against available devices
+    expected_devices = 1
+    for dim in mesh_shape:
+        expected_devices *= dim
+    
+    if expected_devices > num_devices:
+        print(f"Warning: Mesh shape {mesh_shape} requires {expected_devices} devices, "
+              f"but only {num_devices} available. Falling back to auto-detection.")
+        return create_mesh_for_device()
+    
+    try:
+        devices = mesh_utils.create_device_mesh(mesh_shape)
+        return Mesh(devices, axis_names)
+    except Exception as e:
+        print(f"Warning: Failed to create mesh with shape {mesh_shape}: {e}")
+        print("Falling back to auto-detection.")
+        return create_mesh_for_device()
 
 
 def create_mesh_for_device() -> Mesh:
@@ -106,18 +166,32 @@ def print_device_info():
     print("=" * 40)
 
 
-def setup_distributed_training() -> Tuple[Mesh, dict]:
+def setup_distributed_training(mesh_config: Optional["MeshConfig"] = None) -> Tuple[Optional[Mesh], dict]:
     """Setup distributed training with appropriate mesh and device info.
     
+    Args:
+        mesh_config: Optional mesh configuration. If None, uses auto-detection.
+    
     Returns:
-        Tuple[Mesh, dict]: The mesh and device information.
+        Tuple[Optional[Mesh], dict]: The mesh (or None) and device information.
     """
     device_info = get_device_info()
-    mesh = create_mesh_for_device()
+    
+    if mesh_config is not None:
+        mesh = create_mesh_from_config(mesh_config)
+    else:
+        # Fallback to legacy auto-detection
+        if len(jax.devices()) > 1:
+            mesh = create_mesh_for_device()
+        else:
+            mesh = None
     
     print_device_info()
-    print(f"\n🌐 Mesh Configuration")
-    print(f"Mesh shape: {mesh.shape}")
-    print(f"Mesh axis names: {mesh.axis_names}")
+    if mesh is not None:
+        print(f"\n🌐 Mesh Configuration")
+        print(f"Mesh shape: {mesh.shape}")
+        print(f"Mesh axis names: {mesh.axis_names}")
+    else:
+        print(f"\n🌐 Single Device Mode (no mesh)")
     
     return mesh, device_info

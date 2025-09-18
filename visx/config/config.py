@@ -56,6 +56,21 @@ class PretrainingConfig:
 
 
 @dataclass
+class MeshConfig:
+    """Configuration for JAX mesh topology for distributed training."""
+    enabled: bool = True  # Whether to use mesh configuration
+    auto_detect: bool = True  # Whether to auto-detect based on hardware
+    shape: Optional[List[int]] = None  # Mesh shape, e.g., [4, 2] for (4, 2)
+    axis_names: Optional[List[str]] = None  # Axis names, e.g., ['batch', 'model']
+    # TPU-specific settings
+    tpu_mesh_shape: Optional[List[int]] = None  # Default TPU mesh shape
+    tpu_axis_names: Optional[List[str]] = None  # Default TPU axis names
+    # GPU/CPU-specific settings
+    gpu_mesh_shape: Optional[List[int]] = None  # Default GPU mesh shape  
+    gpu_axis_names: Optional[List[str]] = None  # Default GPU axis names
+
+
+@dataclass
 class ExplainabilityConfig:
     """Configuration for explainability analysis."""
     enabled: bool = False
@@ -73,6 +88,7 @@ class Config:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     pretraining: PretrainingConfig = field(default_factory=PretrainingConfig)
     explainability: ExplainabilityConfig = field(default_factory=ExplainabilityConfig)
+    mesh: MeshConfig = field(default_factory=MeshConfig)
     output_dir: str = "outputs"
     save_checkpoints: bool = True
     verbose: bool = True
@@ -98,6 +114,9 @@ class Config:
         # Create explainability config
         explainability_cfg = ExplainabilityConfig(**config_dict.get('explainability', {}))
         
+        # Create mesh config
+        mesh_cfg = MeshConfig(**config_dict.get('mesh', {}))
+        
         # Create main config
         main_config = config_dict.copy()
         main_config.pop('dataset', None)
@@ -105,6 +124,7 @@ class Config:
         main_config.pop('training', None)
         main_config.pop('pretraining', None)
         main_config.pop('explainability', None)
+        main_config.pop('mesh', None)
         
         return cls(
             dataset=dataset_cfg,
@@ -112,6 +132,7 @@ class Config:
             training=training_cfg,
             pretraining=pretraining_cfg,
             explainability=explainability_cfg,
+            mesh=mesh_cfg,
             **main_config
         )
 
@@ -161,6 +182,16 @@ class Config:
                 'methods': self.explainability.methods,
                 'layer_names': self.explainability.layer_names,
                 'num_samples': self.explainability.num_samples,
+            },
+            'mesh': {
+                'enabled': self.mesh.enabled,
+                'auto_detect': self.mesh.auto_detect,
+                'shape': self.mesh.shape,
+                'axis_names': self.mesh.axis_names,
+                'tpu_mesh_shape': self.mesh.tpu_mesh_shape,
+                'tpu_axis_names': self.mesh.tpu_axis_names,
+                'gpu_mesh_shape': self.mesh.gpu_mesh_shape,
+                'gpu_axis_names': self.mesh.gpu_axis_names,
             }
         }
         
@@ -301,6 +332,8 @@ def parse_config(args: argparse.Namespace) -> Config:
         if hasattr(args, 'explain_layers'):
             explainability_cfg.layer_names = args.explain_layers
             
+        mesh_cfg = MeshConfig()  # Use defaults for command line
+            
         return Config(
             mode=args.mode,
             dataset=dataset_cfg,
@@ -308,6 +341,7 @@ def parse_config(args: argparse.Namespace) -> Config:
             training=training_cfg,
             pretraining=pretraining_cfg,
             explainability=explainability_cfg,
+            mesh=mesh_cfg,
             output_dir=args.output_dir,
             verbose=args.verbose
         )

@@ -42,3 +42,16 @@ explainability:
   methods: [saliency, kernels]
   layer_names: [conv1, conv2]
   num_samples: 16
+
+mesh:
+  enabled: true
+  auto_detect: true
+  # Optional: Override automatic detection with custom mesh configuration
+  # shape: [4, 2]  # Mesh shape for custom topology
+  # axis_names: [batch, model]  # Axis names for custom topology
+  # TPU-specific settings (used when auto_detect=false and backend=tpu)
+  # tpu_mesh_shape: [4, 2]
+  # tpu_axis_names: [batch, model]
+  # GPU-specific settings (used when auto_detect=false and backend!=tpu)  
+  # gpu_mesh_shape: [8, 1]
+  # gpu_axis_names: [batch, model]

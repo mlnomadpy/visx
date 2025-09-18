@@ -42,3 +42,7 @@ explainability:
   methods: [saliency, kernels]
   layer_names: [conv1, conv2]
   num_samples: 16
+
+mesh:
+  enabled: true
+  auto_detect: true  # Use automatic detection for model comparison
