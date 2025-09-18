@@ -66,18 +66,69 @@ np.random.seed(42)
 # ---------------------------------------------------------------------------- #
 #                           JAX MESH CONFIGURATION                             #
 # ---------------------------------------------------------------------------- #
-if jax.device_count() > 1:
+
+def setup_mesh_from_config(config_dict=None):
+    """Setup mesh configuration from config dict or use defaults.
+    
+    Args:
+        config_dict: Optional dictionary with mesh configuration.
+        
+    Returns:
+        Optional[Mesh]: JAX mesh or None if single device.
+    """
+    # Try to use the new mesh utilities if available
     try:
-        devices = mesh_utils.create_device_mesh((jax.device_count() // 2, 2))
-        mesh = Mesh(devices, axis_names=('data', 'model'))
-        print(f"Using device mesh with shape: {mesh.shape}")
-    except Exception:
-        print("Could not create 2D mesh. Falling back to 1D data parallelism.")
-        devices = mesh_utils.create_device_mesh((jax.device_count(),))
-        mesh = Mesh(devices, axis_names=('data',))
-else:
-    mesh = None
-    print("Running on a single device.")
+        from visx.utils.mesh import create_mesh_from_config, setup_distributed_training
+        from visx.config.config import MeshConfig
+        
+        if config_dict and 'mesh' in config_dict:
+            # Create MeshConfig from dict
+            mesh_config = MeshConfig(**config_dict['mesh'])
+        elif config_dict:
+            # Create default mesh config but allow override of some settings
+            mesh_config = MeshConfig()
+            # Check for legacy mesh settings in the main config
+            if 'mesh_enabled' in config_dict:
+                mesh_config.enabled = config_dict['mesh_enabled']
+            if 'mesh_auto_detect' in config_dict:
+                mesh_config.auto_detect = config_dict['mesh_auto_detect']
+            if 'mesh_shape' in config_dict:
+                mesh_config.shape = config_dict['mesh_shape']
+            if 'mesh_axis_names' in config_dict:
+                mesh_config.axis_names = config_dict['mesh_axis_names']
+        else:
+            # Use default auto-detection
+            mesh_config = MeshConfig()
+        
+        mesh, device_info = setup_distributed_training(mesh_config)
+        return mesh
+        
+    except ImportError:
+        # Fallback to legacy mesh setup if visx modules not available
+        print("VISX mesh utilities not available, using legacy mesh setup")
+        return setup_legacy_mesh()
+
+
+def setup_legacy_mesh():
+    """Legacy mesh setup for backward compatibility."""
+    if jax.device_count() > 1:
+        try:
+            devices = mesh_utils.create_device_mesh((jax.device_count() // 2, 2))
+            mesh = Mesh(devices, axis_names=('data', 'model'))
+            print(f"Using device mesh with shape: {mesh.shape}")
+            return mesh
+        except Exception:
+            print("Could not create 2D mesh. Falling back to 1D data parallelism.")
+            devices = mesh_utils.create_device_mesh((jax.device_count(),))
+            mesh = Mesh(devices, axis_names=('data',))
+            return mesh
+    else:
+        print("Running on a single device.")
+        return None
+
+
+# Setup mesh - this will be set later in main() based on config
+mesh = None
 
 # ---------------------------------------------------------------------------- #
 #                                    MODELS                                    #
@@ -524,6 +575,11 @@ def main():
     parser.add_argument('--model_name', type=str, default='densenet121', choices=['densenet121', 'resnet18_layernorm'])
     parser.add_argument('--eval_interval_steps', type=int, default=5000)
     parser.add_argument('--save_interval_steps', type=int, default=10000)
+    # Add mesh configuration arguments
+    parser.add_argument('--mesh_enabled', type=bool, default=True, help='Enable mesh configuration')
+    parser.add_argument('--mesh_auto_detect', type=bool, default=True, help='Auto-detect mesh configuration')
+    parser.add_argument('--mesh_shape', type=int, nargs='+', help='Custom mesh shape, e.g., --mesh_shape 4 2')
+    parser.add_argument('--mesh_axis_names', type=str, nargs='+', help='Mesh axis names, e.g., --mesh_axis_names batch model')
     args = parser.parse_args()
     config = vars(args)
 
@@ -535,6 +591,10 @@ def main():
         config['steps_per_epoch'] = 1_281_167 // config['batch_size']
     
     print("--- Configuration ---", config, "---------------------", sep="\n")
+    
+    # Setup mesh configuration
+    global mesh
+    mesh = setup_mesh_from_config(config)
     
     pretrain_gen, probe_gen, test_gen = get_hf_data_generator(config)
     rngs = nnx.Rngs(param=0, dropout=1)
