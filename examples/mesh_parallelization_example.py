@@ -13,14 +13,31 @@ print("-" * 40)
 
 code_example_1 = '''
 import jax
-from visx.utils.mesh import create_mesh_for_device, setup_distributed_training
+from visx.utils.mesh import create_mesh_from_config, setup_distributed_training
+from visx.config.config import MeshConfig, Config
 
-# Automatic mesh setup based on available hardware
+# Method 1: Automatic mesh setup based on available hardware
 mesh, device_info = setup_distributed_training()
 
-# This will:
-# - Detect if running on TPU (4x2 mesh for data/model parallel)
-# - Or use all available devices for data parallelism on GPU/CPU
+# Method 2: Using configuration with auto-detection
+mesh_config = MeshConfig(
+    enabled=True,
+    auto_detect=True  # Use automatic detection
+)
+mesh, device_info = setup_distributed_training(mesh_config)
+
+# Method 3: Custom mesh configuration
+custom_mesh_config = MeshConfig(
+    enabled=True,
+    auto_detect=False,
+    shape=[4, 2],  # 4-way data parallel, 2-way model parallel
+    axis_names=['batch', 'model']
+)
+mesh = create_mesh_from_config(custom_mesh_config)
+
+# Method 4: Load from YAML config file
+config = Config.from_yaml('configs/training_example.yaml')
+mesh = create_mesh_from_config(config.mesh)
 '''
 
 print(code_example_1)
@@ -136,8 +153,40 @@ test_ds = create_test_dataset('cifar10', batch_size=64)
 
 print(code_example_5)
 
+# Example 6: YAML Mesh Configuration
+print("\\n6️⃣ Configuring Mesh via YAML")
+print("-" * 40)
+
+code_example_6 = '''
+# Example YAML configuration file (config.yaml):
+mesh:
+  enabled: true
+  auto_detect: false  # Use custom configuration
+  shape: [4, 2]  # 4-way data parallel, 2-way model parallel
+  axis_names: [batch, model]
+  # TPU-specific settings (override for TPU hardware)
+  tpu_mesh_shape: [4, 2]
+  tpu_axis_names: [batch, model]
+  # GPU-specific settings (override for GPU hardware)
+  gpu_mesh_shape: [8, 1]  # Use all 8 GPUs for data parallelism
+  gpu_axis_names: [batch, model]
+
+# Loading and using the configuration:
+from visx.config.config import Config
+from visx.utils.mesh import setup_distributed_training
+
+config = Config.from_yaml('config.yaml')
+mesh, device_info = setup_distributed_training(config.mesh)
+
+# Or in your training script:
+# python simo2.py --mesh_enabled true --mesh_auto_detect false --mesh_shape 4 2 --mesh_axis_names batch model
+'''
+
+print(code_example_6)
+
 print("\n✅ Key Benefits:")
-print("  • Automatic TPU/GPU mesh configuration")
+print("  • Configurable mesh topology via YAML or command line")
+print("  • Automatic TPU/GPU mesh configuration with override capability")
 print("  • Easy weight partitioning for large models")
 print("  • Streaming datasets for large-scale training")
 print("  • Modular data loading with backward compatibility")
@@ -147,5 +196,7 @@ print("\n🎯 To use these features:")
 print("  1. pip install -r requirements.txt")
 print("  2. Import from visx.utils.mesh or visx.data.*")
 print("  3. Use setup_distributed_training() for automatic setup")
+print("  4. Or configure mesh topology in YAML config files")
+print("  5. Or use command line arguments like --mesh_shape 4 2")
 
 print("\n" + "=" * 60)

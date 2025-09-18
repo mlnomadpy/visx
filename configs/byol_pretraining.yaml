@@ -42,3 +42,15 @@ explainability:
   methods: [saliency, kernels]
   layer_names: [conv1, conv2]
   num_samples: 16
+
+mesh:
+  enabled: true
+  auto_detect: false  # Use custom configuration for pretraining
+  shape: [4, 2]  # 4-way data parallel, 2-way model parallel
+  axis_names: [batch, model]
+  # TPU-specific optimized settings
+  tpu_mesh_shape: [4, 2]
+  tpu_axis_names: [batch, model]
+  # GPU fallback settings
+  gpu_mesh_shape: [8, 1]  # All devices for data parallelism
+  gpu_axis_names: [batch, model]
