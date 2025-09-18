@@ -10,13 +10,14 @@ A modular framework for vision research with YAT (Yet Another Transformer) archi
 - **Modular Architecture**: Clean separation of models, training, evaluation, and configuration
 - **Multiple Training Modes**: 
   - Standard supervised training
-  - Self-supervised pretraining (BYOL, SimCLR)
+  - Self-supervised pretraining (BYOL, SimCLR, SIMO2)
   - Model comparison (YAT vs Linear)
   - Explainability analysis
 - **Model Registry**: Easy registration and management of different model architectures
 - **Configuration Management**: YAML-based configuration with CLI argument support
 - **Comprehensive Evaluation**: Training curves, convergence analysis, confusion matrices
 - **Explainability Tools**: Saliency maps, activation visualization, kernel analysis
+- **JAX/Flax Integration**: Modern neural network framework with distributed training support
 - **Production Ready**: Proper logging, checkpointing, and experiment tracking
 
 ## 📦 Installation
@@ -33,8 +34,9 @@ pip install -e .
 ### Requirements
 
 - Python 3.8+
-- JAX/Flax for neural networks
+- JAX/Flax for neural networks and distributed training
 - TensorFlow for data loading
+- HuggingFace datasets for streaming support
 - Additional dependencies in `requirements.txt`
 
 ## 🎯 Quick Start
@@ -133,23 +135,29 @@ VISX follows a modular architecture:
 
 ```
 visx/
-├── models/           # Model definitions
-│   ├── layers.py     # YAT layers (YatConv, YatNMN)
-│   └── architectures.py  # Model architectures (YatCNN, LinearCNN)
-├── training/         # Training logic
-│   ├── registry.py   # Model registry
-│   ├── train.py      # Training loops
-│   └── modes.py      # Training modes orchestration
-├── pretraining/      # Self-supervised pretraining
-│   └── methods.py    # BYOL, SimCLR implementations
-├── evaluation/       # Evaluation and analysis
-│   ├── explainability.py  # Saliency, visualization
+├── models/           # Model definitions and architectures
+│   └── architectures.py  # YAT, Linear, and other model architectures
+├── training/         # Training logic and orchestration
+│   ├── registry.py   # Model registry for easy model management
+│   ├── train.py      # Core training loops
+│   └── modes.py      # Training mode orchestration
+├── pretraining/      # Self-supervised pretraining methods
+│   ├── methods.py    # BYOL, SimCLR, SIMO2 implementations
+│   └── losses.py     # Pretraining loss functions
+├── evaluation/       # Evaluation and analysis tools
+│   ├── explainability.py  # Saliency maps, visualizations
 │   └── comparison.py # Model comparison utilities
+├── data/             # Data loading and management
+│   ├── configs.py    # Dataset configurations
+│   ├── loaders.py    # Data loading utilities
+│   └── streaming.py  # HuggingFace streaming support
 ├── config/           # Configuration management
-│   └── config.py     # Config classes and parsing
-├── utils/            # Utilities
-│   └── helpers.py    # Checkpointing, logging, etc.
-└── configs/          # Example configurations
+│   └── config.py     # Configuration classes and parsing
+├── utils/            # Utilities and helpers
+│   ├── helpers.py    # Checkpointing, logging, etc.
+│   └── mesh.py       # JAX mesh utilities for distributed training
+├── visualization/    # Visualization tools
+└── configs/          # Example YAML configurations
     ├── training_example.yaml
     ├── byol_pretraining.yaml
     ├── explainability_example.yaml
@@ -195,6 +203,9 @@ Self-supervised learning using online and target networks with exponential movin
 
 ### SimCLR
 Contrastive learning with data augmentation and temperature-scaled contrastive loss.
+
+### SIMO2
+Advanced self-supervised method with multiple instance learning and momentum updates.
 
 ## 📈 Model Comparison
 
